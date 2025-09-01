@@ -30,7 +30,6 @@ jobs:
       - name: Validate Release Tag Format
         id: validate_tag
         env:
-          # Use the repo variable for the regex if it exists, otherwise use the default.
           VERSION_REGEX: ${{ vars.VERSION_REGEX || '^v?[0-9]+\.[0-9]+\.[0-9]+$' }}
         run: |
           TAG_NAME="${{ steps.get_release_b.outputs.release }}"
@@ -45,6 +44,10 @@ jobs:
           if [[ "$TAG_NAME" =~ $VERSION_REGEX ]]; then
             echo "Tag '$TAG_NAME' matches the required format."
             echo "is_valid=true" >> "$GITHUB_OUTPUT"
+            # Extract matched portion (Bash stores full match in BASH_REMATCH[0])
+            new_version="${BASH_REMATCH[0]}"
+            echo "Extracted version: $new_version"
+            echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
           else
             echo "Tag '$TAG_NAME' does not match the required format. Ignoring."
             echo "is_valid=false" >> "$GITHUB_OUTPUT"
@@ -70,7 +73,7 @@ jobs:
         id: check_tag
         if: steps.validate_tag.outputs.is_valid == 'true'
         env:
-          RELEASE_TAG: ${{ steps.get_release_b.outputs.release }}
+          RELEASE_TAG: v${{ steps.validate_tag.outputs.new_version }}
         run: |
           if git tag --list | grep -q "^${RELEASE_TAG}$"; then
             echo "Tag '$RELEASE_TAG' already exists. No action needed."
@@ -81,10 +84,11 @@ jobs:
           fi
 
       - name: Create and push new tag
+        id: create_and_push
         # This step only runs if the tag is valid AND new.
         if: steps.check_tag.outputs.create_tag == 'true'
         env:
-          RELEASE_TAG: ${{ steps.get_release_b.outputs.release }}
+          RELEASE_TAG: v${{ steps.validate_tag.outputs.new_version }}
         run: |
           RELEASE_TAG="v${RELEASE_TAG#v}" # Ensure the tag starts with 'v'
 
