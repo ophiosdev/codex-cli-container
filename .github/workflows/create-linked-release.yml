@@ -88,7 +88,7 @@ jobs:
         # This step only runs if the tag is valid AND new.
         if: steps.check_tag.outputs.create_tag == 'true'
         env:
-          RELEASE_TAG: v${{ steps.validate_tag.outputs.new_version }}
+          RELEASE_TAG: ${{ steps.validate_tag.outputs.new_version }}
         run: |
           RELEASE_TAG="v${RELEASE_TAG#v}" # Ensure the tag starts with 'v'
 
