@@ -73,8 +73,9 @@ jobs:
         id: check_tag
         if: steps.validate_tag.outputs.is_valid == 'true'
         env:
-          RELEASE_TAG: v${{ steps.validate_tag.outputs.new_version }}
+          RELEASE_TAG: ${{ steps.validate_tag.outputs.new_version }}
         run: |
+          RELEASE_TAG="v${RELEASE_TAG#v}" # Ensure the tag starts with 'v'
           if git tag --list | grep -q "^${RELEASE_TAG}$"; then
             echo "Tag '$RELEASE_TAG' already exists. No action needed."
             echo "create_tag=false" >> "$GITHUB_OUTPUT"
