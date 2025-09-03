@@ -1,0 +1,66 @@
+name: Check Missing Container Images
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: List version tags
+        id: list_tags
+        run: |
+          {
+            tags=$(git tag | grep '^v' | sort -r)
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check GHCR for existing images
+        id: check_images
+        run: |
+          missing_tags=()
+          # Fetch existing image tags from GHCR using GITHUB_TOKEN for auth
+          ghcr_tags=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              https://ghcr.io/v2/ophiosdev/codex-cli/tags/list | jq -r '.tags[]')
+          echo "Existing GHCR tags: $ghcr_tags"
+
+          while IFS= read -r tag; do
+            if ! grep -q "^${tag}$" <<< "$ghcr_tags"; then
+              echo "Image missing for $tag"
+              missing_tags+=("$tag")
+            fi
+          done <<< "${{ steps.list_tags.outputs.tags }}"
+
+          {
+            printf "%s\n" "${missing_tags[@]}"
+            echo "missing_tags<<EOF"
+            printf "%s\n" "${missing_tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.WORKFLOW_APP_ID }}
+          private-key: ${{ secrets.WORKFLOW_APP_PRIVATE_KEY }}
+
+      - name: Trigger build-and-deploy for missing tags
+        if: steps.check_images.outputs.missing_tags != ''
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: |
+          while read -r tag; do
+            echo "Triggering build-and-deploy for $tag"
+            gh workflow run build-and-deploy.yml --ref "$tag"
+          done <<< "${{ steps.check_images.outputs.missing_tags }}"
