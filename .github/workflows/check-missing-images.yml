@@ -42,14 +42,14 @@ jobs:
           echo "Existing GHCR tags: $ghcr_tags"
 
           while IFS= read -r tag; do
-            if ! grep -q "^${tag}$" <<< "$ghcr_tags"; then
+            if ! grep -qx "${tag#v}" <<< "$ghcr_tags"; then
               echo "Image missing for $tag"
               missing_tags+=("$tag")
             fi
           done <<< "${{ steps.list_tags.outputs.tags }}"
 
+          # Output missing tags correctly to GITHUB_OUTPUT
           {
-            printf "%s\n" "${missing_tags[@]}"
             echo "missing_tags<<EOF"
             printf "%s\n" "${missing_tags[@]}"
             echo "EOF"
