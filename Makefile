@@ -5,11 +5,16 @@ TAG ?= dev
 IMAGE_REF := $(IMAGE):$(TAG)
 DOCKERFILE ?= Dockerfile
 CONTEXT ?= .
+CODEX_CLI_VERSION ?= latest
 
 .PHONY: build clean
 
 build:
-	docker build -t $(IMAGE_REF) -f $(DOCKERFILE) $(CONTEXT)
+	docker build \
+		-t $(IMAGE_REF) \
+		-f $(DOCKERFILE) \
+		--build-arg CODEX_CLI_VERSION=$(CODEX_CLI_VERSION) \
+		$(CONTEXT)
 
 clean:
 	@echo "Removing image $(IMAGE_REF) if it exists..."
