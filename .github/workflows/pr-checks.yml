@@ -18,7 +18,7 @@ jobs:
 
       - name: Run pre-commit checks
         id: pre-commit
-        uses: cloudposse/github-action-pre-commit@v4.0.0
+        uses: cloudposse/github-action-pre-commit@v4.1.0
 
       - name: Build Docker image if Dockerfile changed
         run: |
